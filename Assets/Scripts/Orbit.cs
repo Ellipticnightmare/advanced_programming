@@ -14,6 +14,10 @@ public class Orbit : MonoBehaviour
 
     public float distanceMin = .5f;
     public float distanceMax = 15f;
+    [Header("Collision")]
+    public bool cameraCollision = false;
+    public float rayDistance = 1000f;
+    public LayerMask ignoreLayer;
 
     private float distance = 5.0f;
     private float x = 0.0f;
@@ -29,17 +33,39 @@ public class Orbit : MonoBehaviour
         transform.SetParent(null);
     }
 
+    private void FixedUpdate()
+    {
+        if (target)
+        {
+            if (cameraCollision)
+            {
+                //Create a Ray that goes backwards from target
+                Ray camRay = new Ray(target.position, -transform.forward);
+                RaycastHit hit;
+                if(Physics.Raycast(camRay, out hit, rayDistance, ~ignoreLayers, QueryTriggerInteraction.Ignore))
+                {
+
+                }
+            }
+        }
+    }
+
+    public void Look(float mouseX, float mouseY)
+    {
+        x += mouseX * xSpeed * Time.deltaTime;
+        y -= mouseY * ySpeed * Time.deltaTime;
+
+        y = ClampAngle(y, yMinLimit, yMaxLimit);
+
+        Quaternion rotation = Quaternion.Euler(y, x, 0);
+        transform.rotation = rotation;
+
+    }
+
     void LateUpdate()
     {
         if (target)
         {
-            x += Input.GetAxis("Mouse X") * xSpeed * distance * 0.02f;
-            y -= Input.GetAxis("Mouse Y") * ySpeed * 0.02f;
-
-            y = ClampAngle(y, yMinLimit, yMaxLimit);
-
-            Quaternion rotation = Quaternion.Euler(y, x, 0);
-
             float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
             distance = Mathf.Clamp(distance - scrollWheel * 5, distanceMin, distanceMax);
 
@@ -56,7 +82,6 @@ public class Orbit : MonoBehaviour
             Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);
             Vector3 position = rotation * negDistance + target.position;
 
-            transform.rotation = rotation;
             transform.position = position;
 
             Vector3 euler = transform.eulerAngles;
