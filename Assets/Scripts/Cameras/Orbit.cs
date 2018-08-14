@@ -3,7 +3,9 @@ using System.Collections;
 
 public class Orbit : MonoBehaviour
 {
+    public bool hideCursor = true;
     public Transform target;
+    public Vector3 offset = new Vector3(0, 1f, 0);
     public LayerMask ignoreLayers;
     public float maxDistance = 5.0f;
     public float xSpeed = 120.0f;
@@ -19,6 +21,7 @@ public class Orbit : MonoBehaviour
     public float rayDistance = 1000f;
     public LayerMask ignoreLayer;
 
+    private Vector3 originalOffset;
     private float distance = 5.0f;
     private float x = 0.0f;
     private float y = 0.0f;
@@ -26,11 +29,25 @@ public class Orbit : MonoBehaviour
     // Use this for initialization
     void Start()
     {
+        originalOffset = transform.position - target.position;
+        rayDistance = originalOffset.magnitude;
+
+        if (hideCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+
         Vector3 angles = transform.eulerAngles;
         x = angles.y;
         y = angles.x;
 
         transform.SetParent(null);
+    }
+
+    void OnDrawGizmosSelected()
+    {
+
     }
 
     private void FixedUpdate()
@@ -42,11 +59,15 @@ public class Orbit : MonoBehaviour
                 //Create a Ray that goes backwards from target
                 Ray camRay = new Ray(target.position, -transform.forward);
                 RaycastHit hit;
-                if(Physics.Raycast(camRay, out hit, rayDistance, ~ignoreLayers, QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(camRay, out hit, rayDistance, ~ignoreLayers, QueryTriggerInteraction.Ignore))
                 {
-
+                    distance = hit.distance;
+                    return;
                 }
             }
+
+            //Reset distance if not hitting
+            distance = originalOffset.magnitude;
         }
     }
 
@@ -66,26 +87,9 @@ public class Orbit : MonoBehaviour
     {
         if (target)
         {
-            float scrollWheel = Input.GetAxis("Mouse ScrollWheel");
-            distance = Mathf.Clamp(distance - scrollWheel * 5, distanceMin, distanceMax);
-
-            RaycastHit hit;
-            if (Physics.Linecast(target.position, transform.position, out hit, ~ignoreLayers))
-            {
-                distance -= hit.distance;
-            }
-            else
-            {
-                distance = maxDistance;
-            }
-
-            Vector3 negDistance = new Vector3(0.0f, 0.0f, -distance);
-            Vector3 position = rotation * negDistance + target.position;
-
-            transform.position = position;
-
-            Vector3 euler = transform.eulerAngles;
-            target.rotation = Quaternion.AngleAxis(euler.y, Vector3.up);
+            //Convert from world to local
+            Vector3 localOffset = transform.TransformDirection(offset);
+            transform.position = (target.position + offset) + -transform.forward * distance;
         }
     }
 
